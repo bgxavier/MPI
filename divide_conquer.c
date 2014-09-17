@@ -3,7 +3,7 @@
 #include <mpi.h>
 
 #define RANDOM_INTERVAL 100 // Intervalo de preenchimento do vetor
-#define PRINT 0 // booleano para impressao do vetor final
+#define PRINT 1 // booleano para impressao do vetor final
 
 void bubble_sort(int *list, int n);
 int *merge_sort(int *v1,int n1,int *v2,int n2);
@@ -75,14 +75,13 @@ int main(int argc, char **argv)
 				// Envia para os filhos
         		MPI_Send(vector, message_size/2, MPI_INT, left, 0, MPI_COMM_WORLD);
         		MPI_Send(vector + message_size/2, message_size/2, MPI_INT, right, 0, MPI_COMM_WORLD);
-
 				// Aguarda o Retorno, efetua o merge e sobe
 				MPI_Recv(vector, message_size/2, MPI_INT, left, MPI_ANY_TAG, MPI_COMM_WORLD,&status);
 				MPI_Recv(vector + message_size, message_size/2, MPI_INT, right, MPI_ANY_TAG, MPI_COMM_WORLD,&status);
 				
 				merge = merge_sort(vector,message_size/2,vector+message_size,message_size/2);
 
-				MPI_Send(merge, message_size/2, MPI_INT, parent, 0,MPI_COMM_WORLD);
+				MPI_Send(merge, message_size, MPI_INT, parent, 0,MPI_COMM_WORLD);
 			}
 		}
 
