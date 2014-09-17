@@ -17,9 +17,6 @@ void main(int argc, char **argv){
 
 	bubble_sort(vector,vector_size);
 
-	for(i=0;i<vector_size;i++){
-		printf("%d ", vector[i]);
-	}
 }
 
 void bubble_sort(int *list, int n)
