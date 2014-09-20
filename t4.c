@@ -13,8 +13,9 @@ int main(int argc, char **argv)
     int i,j;
     int vector_size = atoi(argv[1]);
     int rank, nprocs;
-    int *vector = (int *) malloc(sizeof(int)*vector_size);
-	int *slice = (int*) malloc(sizeof(int)*vector_size/nprocs);
+	int *vector = (int *) malloc(sizeof(int)*vector_size);
+	int *slice = (int*) malloc(sizeof(int)*vector_size);
+	int verify;
 
     MPI_Status status;
 
@@ -22,16 +23,44 @@ int main(int argc, char **argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
-	srand(time(0));
-		for(i=0; i<vector_size; i++){
-		vector[i] = rand() % RANDOM_INTERVAL;
+	if(rank==0){
+		srand(time(0));
+		for(i=0; i<vector_size; i++)
+			vector[i] = rand() % RANDOM_INTERVAL;
 	}
 
-	for(i=0;i<nprocs-1;i++)
-		MPI_Scatter(vector,vector_size/nprocs,MPI_INT,slice,MPI_INT,0,MPI_COMM_WORLD);
+	MPI_Scatter(vector,vector_size/nprocs,MPI_INT,slice,vector_size/nprocs,MPI_INT,0,MPI_COMM_WORLD);
 
+	// Ordena fatias localmente
+	bubble_sort(slice,vector_size/nprocs);
+
+	printf("rank %d: ", rank);
+	for(i=0;i<vector_size/nprocs;i++)
+		printf("%d ", slice[i]);
+	printf("\n");
+
+	// Verifica convergencia
+
+	if(rank!=0)
+		MPI_Send(&slice[0], 1, MPI_INT,rank-1,0,MPI_COMM_WORLD);
+
+	if(rank!=3)
+		MPI_Recv(&verify,1,MPI_INT,rank+1,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+
+	printf("Numero recebido por rank %d: %d\n",rank, verify);
+
+    if (left < 0) left = MPI_PROCC_NULL;
+    if (right > nprocs - 1) right = MPI_PROC_NULL;
+
+	// Compara o menor recebido com o maior local
+	if(verify < slice[(vector_size/nprocs)-1])
+		MPI_Send(&slice[0], 1, MPI_INT,rank-1,0,MPI_COMM_WORLD);
+
+		// Sem convergencia, efetua a troca
+		slice[
+
+	MPI_Finalize();
 }
-
 
 void bubble_sort(int *list, int n)
 {
