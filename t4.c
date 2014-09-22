@@ -28,72 +28,59 @@ int main(int argc, char **argv)
 	int left = rank-1;
 	int right = rank+1;
 
-	if(right > nprocs-1) right = MPI_PROC_NULL;
-	if(left < 0 ) left = MPI_PROC_NULL;
-
 	int ultimo_valor = (vector_size/nprocs)-1;
 
-	int *convergencia = (int*) malloc(sizeof(int)*2);
+    if(right > nprocs-1) right = MPI_PROC_NULL;
+    if(left < 0 ) left = MPI_PROC_NULL;
 
-	memset(convergencia,0,sizeof(convergencia));
-
+	// Popula Vetor
 	if(rank==0){
 		srand(time(0));
 		for(i=0; i<vector_size; i++)
 			vector[i] = rand() % RANDOM_INTERVAL;
 	}
 
+    // Dispara as fatias
 	MPI_Scatter(vector,vector_size/nprocs,MPI_INT,slice,vector_size/nprocs,MPI_INT,0,MPI_COMM_WORLD);
 
-	while(sum(convergencia,nprocs) < nprocs){
+	// Ordena fatias localmente
+	bubble_sort(slice,vector_size/nprocs);
 
-		// Ordena fatias localmente
-		bubble_sort(slice,vector_size/nprocs);
+    printf("rank %d: ",rank);
+      for(i=0;i<vector_size/nprocs;i++)
+           printf("%d ",slice[i]);
+    printf("\n");
 
-		// Todos mandam para esquerda o seu menor para verificar convergencia
-		MPI_Send(&slice[0], 1, MPI_INT, left,0,MPI_COMM_WORLD);
+	// Todos mandam para esquerda o seu menor para verificar convergencia
+	MPI_Send(&slice[0], 1, MPI_INT, left, 2, MPI_COMM_WORLD);
+
+	// Aguarda o recebimento do maior ( caso seja necessario )
+	MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+		if(status.MPI_TAG != 9)
+			MPI_Recv(&slice[0], 1, MPI_INT, left, 2, MPI_COMM_WORLD,&status);
+
+	// Todos recebem da direita os menores para verificar convergencia
+	MPI_Recv(&verify, 1, MPI_INT, right, 2, MPI_COMM_WORLD,&status);
 		
-		// Todos recebem da direita os menores para verificar convergencia
-		MPI_Recv(&verify, 1, MPI_INT,right,0,MPI_COMM_WORLD,&status);
-		
-    	// Compara o menor recebido com o maior local nos processos menores que o ultimo
-    	if(verify < slice[ultimo_valor]){
-
-			// Envia o maior para a direita
-			MPI_Send(&slice[ultimo_valor],1,MPI_INT,right,0,MPI_COMM_WORLD);
-			
-			// Coloco o menor recebido da direita na ultima posicao do meu buffer
-			if(rank!=nprocs-1)
-				slice[ultimo_valor] = verify;
-
-			// Recebendo o maior valor da esquerda e alocando na primeira posicao do buffer
-			MPI_Recv(&slice[0],1,MPI_INT,left,0,MPI_COMM_WORLD,&status);
-		}
-
-		else{
-			convergencia[rank] = 1;
-			for(i=0;i<nprocs;i++)
-                MPI_Bcast(&convergencia[i],1,MPI_INT,i,MPI_COMM_WORLD);
-        }
-		
+    // Compara o menor recebido com o maior local nos processos menores que o ultimo    	
+	if(verify < slice[ultimo_valor]){
+		printf("Rank %d verificando se %d eh menor que %d\n",rank,verify,slice[ultimo_valor]);
+		MPI_Send(&slice[ultimo_valor],1,MPI_INT,right,2,MPI_COMM_WORLD);
+		printf("Rank %d envia %d para %d\n",rank,slice[ultimo_valor],right);
+		slice[ultimo_valor] = verify;
 	}
-
-	// Imprime estado atual
+	else{
+		int dummy = 1;
+		MPI_Send(&dummy,1, MPI_INT, right, 9, MPI_COMM_WORLD);
+	}
+	
     printf("rank %d: ",rank);
       for(i=0;i<vector_size/nprocs;i++)
 	       printf("%d ",slice[i]);
     printf("\n");
 
-	MPI_Finalize();
-}
 
-int sum(int *vector, int size)
-{
-	int i;
-	int soma=0;
-	for(i=0;i<size;i++)
-		soma += vector[i];
-	return soma;
+	MPI_Finalize();
 }
 
 void bubble_sort(int *list, int n)
