@@ -22,13 +22,14 @@ int main(int argc, char **argv)
 	int convergir = 1;
 	int send;
 	int signal;
+
     MPI_Status status;
 
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
-    int vetor_convergencia[nprocs]; // Controle de convergencia
+    int vetor_convergencia[nprocs]; // controle de convergencia
 	
 	for(i=0;i<nprocs;i++)
 		vetor_convergencia[i] = 0;
@@ -50,28 +51,27 @@ int main(int argc, char **argv)
     // Dispara as fatias
 	MPI_Scatter(vector,vector_size/nprocs,MPI_INT,slice,vector_size/nprocs,MPI_INT,0,MPI_COMM_WORLD);
 
-    printf("rank %d: ",rank);
-      for(i=0;i<vector_size/nprocs;i++)
-           printf("%d ",slice[i]);
-    printf("\n");
-
-	// FASE 1 - Processamento Local
 while(sum(vetor_convergencia,nprocs) < nprocs)
 {
+
+/*
+*   FASE 1 - Processamento Local
+*/
 
 	// Ordena fatias localmente
 	bubble_sort(slice,vector_size/nprocs);
 
-	// FASE 2 - CONDICAO DE PARADA
+/*
+*	 FASE 2 - CONDICAO DE PARADA
+*/
 
-	// Todos mandam para a esquera o seu menor
+	// Todos mandam para a esquerda o seu menor
 	if(rank > 0)
 		MPI_Send(&slice[0], 1, MPI_INT, left, 7, MPI_COMM_WORLD);
 
     // Todos recebem da direita para verificacao
 	if(rank<nprocs-1){
 		MPI_Recv(&received_minor, 1, MPI_INT, right, 7, MPI_COMM_WORLD,&status);
-		printf("SOU %d e recebi %d de %d para verificacao\n",rank, received_major, status.MPI_SOURCE);
 		if(slice[ultimo_valor] <= received_minor){
 			convergir = 0;
 		}
@@ -79,66 +79,47 @@ while(sum(vetor_convergencia,nprocs) < nprocs)
 			convergir = 1;
 	}
 
-	// FASE 3 - Comunicar para convergir
+/*
+*    FASE 3 - CONVERGENCIA
+*/
 
 	if(rank<nprocs-1){
 		// Envia o maior e seta a variavel de retorno
-		if(convergir){
-			printf("SOU %d e preciso convergir\n",rank);
-			send=1;
-			//printf("ENVIANDO %d para %d\n",slice[ultimo_valor],right);
+		if(convergir == 1){
+			send = 1;
 			MPI_Send(&slice[ultimo_valor], 1, MPI_INT, right, 1, MPI_COMM_WORLD);
 		}
-		// Nao enviar retorno
+		// Nao enviar retorno, ja estah convergido
 		else{
-			vetor_convergencia[rank] = 1; // Ja esta convergido
-			send=0;
+			vetor_convergencia[rank] = 1; 
+			send = 0;
 		}
 		// Mensagem para envio ou nao do retorno
-		//printf("ENVIANDO sinal %d para %d\n",send,right);
 		MPI_Send(&send, 1, MPI_INT, right, 2, MPI_COMM_WORLD);
 	}
-
 	if(rank>0){
+		// Verifica o sinal de retorno
 		MPI_Recv(&signal, 1, MPI_INT, left, 2, MPI_COMM_WORLD,&status);
-		printf("%d recebeu sinal %d de %d\n",rank,signal,status.MPI_SOURCE);
 		// Se for para retornar, recebe o maior e devolve o menor
-		if(signal==1){
+		if(signal){
 			MPI_Recv(&received_major, 1, MPI_INT, left, 1, MPI_COMM_WORLD,&status);
-			MPI_Send(&slice[0], 1, MPI_INT, left, 1, MPI_COMM_WORLD);	
+			MPI_Send(&slice[0], 1, MPI_INT, left, 8, MPI_COMM_WORLD);	
 			slice[0] = received_major;
 
 		}
 	}
-
 	// Recebe o Retorno
-
 	if(rank < nprocs-1){
 		if(convergir == 1){
-			MPI_Recv(&received_minor, 1, MPI_INT, right, 1, MPI_COMM_WORLD,&status);
+			MPI_Recv(&received_minor, 1, MPI_INT, right, 8, MPI_COMM_WORLD,&status);
 			slice[ultimo_valor] = received_minor;
 		}
 	}
-
 	// Dispara broadcast com o estado atual
     for(i=0;i<nprocs;i++)
         MPI_Bcast(&vetor_convergencia[i], 1, MPI_INT, i, MPI_COMM_WORLD);
 
-    printf("rank %d: ",rank);
-      for(i=0;i<vector_size/nprocs;i++)
-           printf("%d ",slice[i]);
-    printf("\n");
-	// Todos imprimem seu vetor de convergencia
-	//printf("Convergencia do rank %d: ",rank);
-	//printf("%d ",sum(vetor_convergencia,nprocs));
-	//printf("\n");
 }
-
-    printf("rank %d: ",rank);
-      for(i=0;i<vector_size/nprocs;i++)
-           printf("%d ",slice[i]);
-    printf("\n");
-
 	MPI_Finalize();
 }
 
