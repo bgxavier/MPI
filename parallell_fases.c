@@ -117,11 +117,13 @@ while(sum(vetor_convergencia,nprocs) < nprocs)
         MPI_Bcast(&vetor_convergencia[i], 1, MPI_INT, i, MPI_COMM_WORLD);
 
 }
-	printf("Rank %d: ",rank);
-	for(i=0;i<vector_size/nprocs;i++){
-		printf("%d ",slice[i]);
+	if(PRINT){
+		printf("Rank %d: ",rank);
+		for(i=0;i<vector_size/nprocs;i++){
+			printf("%d ",slice[i]);
+		}
+		printf("\n");
 	}
-	printf("\n");
 
 	MPI_Finalize();
 }
