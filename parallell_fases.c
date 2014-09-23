@@ -29,6 +29,8 @@ int main(int argc, char **argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
+	MPI_Request request;
+
     int vetor_convergencia[nprocs]; // controle de convergencia
 	
 	for(i=0;i<nprocs;i++)
@@ -88,6 +90,8 @@ while(sum(vetor_convergencia,nprocs) < nprocs)
 		if(convergir == 1){
 			send = 1;
 			MPI_Send(&slice[ultimo_valor], 1, MPI_INT, right, 1, MPI_COMM_WORLD);
+            MPI_Irecv(&received_minor, 1, MPI_INT, right, 8, MPI_COMM_WORLD,&request);
+            slice[ultimo_valor] = received_minor;
 		}
 		// Nao enviar retorno, ja estah convergido
 		else{
@@ -108,18 +112,17 @@ while(sum(vetor_convergencia,nprocs) < nprocs)
 
 		}
 	}
-	// Recebe o Retorno
-	if(rank < nprocs-1){
-		if(convergir == 1){
-			MPI_Recv(&received_minor, 1, MPI_INT, right, 8, MPI_COMM_WORLD,&status);
-			slice[ultimo_valor] = received_minor;
-		}
-	}
 	// Dispara broadcast com o estado atual
     for(i=0;i<nprocs;i++)
         MPI_Bcast(&vetor_convergencia[i], 1, MPI_INT, i, MPI_COMM_WORLD);
 
 }
+	printf("Rank %d: ",rank);
+	for(i=0;i<vector_size/nprocs;i++){
+		printf("%d ",slice[i]);
+	}
+	printf("\n");
+
 	MPI_Finalize();
 }
 
