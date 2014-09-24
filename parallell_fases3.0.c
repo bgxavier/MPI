@@ -4,8 +4,7 @@
 #include <mpi.h>
 
 #define RANDOM_INTERVAL 100 // Intervalo de preenchimento do vetor
-#define PRINT 1 // booleano para impressao do vetor final
-#define BORDER 10
+#define PRINT 0 // booleano para impressao do vetor final
 
 void bubble_sort(int *list, int n);
 int sum(int *vector, int size);
@@ -16,17 +15,17 @@ int main(int argc, char **argv)
     int i,j;
     int vector_size = atoi(argv[1]);
     int rank, nprocs;
+    int border = atoi(argv[2]);
 	int *vector = (int *) malloc(sizeof(int)*vector_size);
 	int *slice = (int*) malloc(sizeof(int)*vector_size);
 	int received_minor;
 	int received_major;
-	int *vector_majors = (int*) malloc(sizeof(int)*BORDER);
-	int *vector_minors = (int*) malloc(sizeof(int)*BORDER);
-	int *returned_majors = (int*) malloc(sizeof(int)*BORDER);
+	int *vector_majors = (int*) malloc(sizeof(int)*border);
+	int *vector_minors = (int*) malloc(sizeof(int)*border);
+	int *returned_majors = (int*) malloc(sizeof(int)*border);
 	int converge = 1;
 	int signal;
 	int dev_count=0;
-	int border = atoi(argv[2]);
 
     MPI_Status status;
 
@@ -53,11 +52,11 @@ int main(int argc, char **argv)
 		srand(time(0));
 		for(i=0; i<vector_size; i++)
 			vector[i] = rand() % RANDOM_INTERVAL;
-	}
 
     // Dispara as fatias
 	MPI_Scatter(vector,vector_size/nprocs,MPI_INT,slice,vector_size/nprocs,MPI_INT,0,MPI_COMM_WORLD);
-	
+	t1 = MPI_Wtime();	
+}
 
 while(sum(vetor_convergencia,nprocs) < nprocs)
 {
@@ -125,6 +124,11 @@ while(sum(vetor_convergencia,nprocs) < nprocs)
         MPI_Bcast(&vetor_convergencia[i], 1, MPI_INT, i, MPI_COMM_WORLD);
 }
 
+if(rank==0){
+t2=MPI_Wtime();
+
+        printf("Tempo de execucao: %f\n", t2-t1);
+}
 	if(PRINT){
 		printf("Rank %d: ",rank);
 		for(i=0;i<(vector_size/nprocs);i++){
