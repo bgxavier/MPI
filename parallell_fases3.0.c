@@ -26,6 +26,7 @@ int main(int argc, char **argv)
 	int converge = 1;
 	int signal;
 	int dev_count=0;
+	int border = atoi(argv[2]);
 
     MPI_Status status;
 
@@ -96,7 +97,7 @@ while(sum(vetor_convergencia,nprocs) < nprocs)
 		// Verifica o sinal de convergencia. Caso sim, envia os menores para a esquerda e aguardo os maiores
 		MPI_Recv(&signal, 1, MPI_INT, left, 2, MPI_COMM_WORLD,&status);
 		if(signal){
-			MPI_Send(slice, BORDER, MPI_INT, left, 8, MPI_COMM_WORLD);
+			MPI_Send(slice, border, MPI_INT, left, 8, MPI_COMM_WORLD);
 
 			MPI_Recv(&dev_count,1,MPI_INT,left,9,MPI_COMM_WORLD,&status);
 			MPI_Recv(slice,dev_count,MPI_INT,left,10,MPI_COMM_WORLD,&status);
@@ -105,10 +106,10 @@ while(sum(vetor_convergencia,nprocs) < nprocs)
 	// Recebe os menores
 	if(rank<nprocs-1){
 		if(converge){
-			MPI_Recv(vector_minors, BORDER, MPI_INT, right, 8, MPI_COMM_WORLD,&status);
+			MPI_Recv(vector_minors, border, MPI_INT, right, 8, MPI_COMM_WORLD,&status);
          	// Armazeno os que preciso no meu vetor e devolvo os meus maiores na mesma quantidade
 			int dev_count=0;
-			for(i=0;i<BORDER;i++){
+			for(i=0;i<border;i++){
 				if(vector_minors[i] <= slice[ultimo_valor-dev_count]){
 					returned_majors[dev_count] = slice[ultimo_valor-dev_count];
 					slice[ultimo_valor-dev_count] = vector_minors[i];
